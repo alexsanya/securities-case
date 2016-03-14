@@ -2,7 +2,8 @@
 <html>
 <head>
     <title>WebSocket Stomp Receiving Example</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+          integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 </head>
 <body>
     <div>
@@ -20,14 +21,18 @@
                 return {priceList: {}, highlighted: ''};
             },
             priceUpdateCame: function (updatedData) {
+                var self = this;
                 this.state.priceList[updatedData.code] = updatedData.price;
                 this.state.highlighted = updatedData.code;
+                clearTimeout(this.highlightTimer);
+                this.highlightTimer = setInterval(function () {
+                    self.setState({highlighted: ''});
+                }, 1000);
                 this.setState(this.state);
             },
-            componentDidMount: function () {
-                var self = this;
-
-                var xhttp = new XMLHttpRequest();
+            fetchInstruments: function () {
+                var xhttp = new XMLHttpRequest(),
+                    self = this;
                 xhttp.onreadystatechange = function() {
                     if (xhttp.readyState == 4 && xhttp.status == 200) {
                         var allInstruments = JSON.parse(xhttp.responseText);
@@ -39,12 +44,13 @@
                 };
                 xhttp.open("GET", "/instruments", true);
                 xhttp.send();
+            },
+            componentDidMount: function () {
+                var self = this,
+                    socket = new SockJS('/stomp'),
+                    stompClient = Stomp.over(socket);
 
-
-                var socket = new SockJS('/stomp');
-
-                var stompClient = Stomp.over(socket);
-
+                self.fetchInstruments();
                 stompClient.connect({ }, function(frame) {
                     // subscribe to the /topic/message endpoint
                     stompClient.subscribe("/topic/update", function(data) {
